@@ -39,13 +39,14 @@ RUN set -o xtrace \
     && chown -R root:root $ANDROID_HOME \
     && rm android-sdk-tools.zip \
     && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
-    && yes | sdkmanager --licenses \
-    && touch /root/.android/repositories.cfg \
-    && sdkmanager platform-tools \
+    # cmdline-tools 23+ no longer create ~/.android themselves
     && mkdir -p /root/.android \
     && touch /root/.android/repositories.cfg \
+    # --licenses is a no-op (with a warning) on cmdline-tools 23+, still needed on older ones
+    && yes | sdkmanager --licenses \
+    && yes | sdkmanager platform-tools \
     && git config --global user.email "me@ice.codes" \
     && git config --global user.name "Ice Jovanoski"
 
 # emulator is not available on linux/arm64 (https://issuetracker.google.com/issues/227219818)
-RUN if [ $(uname -m) = "x86_64" ]; then sdkmanager emulator ; fi
+RUN if [ $(uname -m) = "x86_64" ]; then yes | sdkmanager emulator ; fi
