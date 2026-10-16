@@ -74,8 +74,9 @@ jobs:
           docker run --rm "$sdk" java -version
           installed="$(docker run --rm "$sdk" sdkmanager --list_installed)"
           echo "$installed"
-          grep -q "build-tools;$ANDROID_BUILD_TOOLS_VERSION" <<< "$installed"
-          for p in $ANDROID_PLATFORM_PACKAGES; do grep -q "platforms;$p " <<< "$installed"; done
+          # Newer cmdline-tools print package paths with '/' instead of ';'.
+          grep -qE "build-tools[;/]$ANDROID_BUILD_TOOLS_VERSION " <<< "$installed"
+          for p in $ANDROID_PLATFORM_PACKAGES; do grep -qE "platforms[;/]$p " <<< "$installed"; done
 
           # Cross-compile a trivial program to check the NDK toolchain works.
           docker run --rm "$ndk" sh -euxc '
