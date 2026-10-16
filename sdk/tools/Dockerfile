@@ -36,6 +36,11 @@ RUN set -o xtrace \
     && mkdir -p ${ANDROID_HOME}/cmdline-tools/ \
     && unzip -q android-sdk-tools.zip -d ${ANDROID_HOME}/cmdline-tools/ \
     && mv ${ANDROID_HOME}/cmdline-tools/cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest \
+    # cmdline-tools 23+ sdkmanager delegates to bin/android, which is shipped as x86_64 only
+    && if [ "$(uname -m)" = "aarch64" ]; then \
+         wget -q https://dl.google.com/android/cli/latest/linux_arm64/android -O ${ANDROID_HOME}/cmdline-tools/latest/bin/android; \
+       fi \
+    && chmod +x ${ANDROID_HOME}/cmdline-tools/latest/bin/android \
     && chown -R root:root $ANDROID_HOME \
     && rm android-sdk-tools.zip \
     && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
