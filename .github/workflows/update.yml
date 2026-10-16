@@ -1,0 +1,98 @@
+name: Update versions
+
+# Checks Google's SDK repository for new stable command-line tools, platform,
+# build-tools and NDK releases. When something changed it:
+#   1. commits the bump to the auto/update-versions branch,
+#   2. builds, smoke-tests and pushes the images from that branch,
+#   3. fast-forwards main to it only if the build succeeded.
+# If any step fails, an issue is opened (or updated) so it doesn't go unnoticed.
+
+on:
+  schedule:
+    - cron: "17 5 * * *" # daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+  issues: write
+
+concurrency:
+  group: update-versions
+  cancel-in-progress: false
+
+env:
+  BRANCH: auto/update-versions
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.update.outputs.changed }}
+      message: ${{ steps.update.outputs.message }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - id: update
+        run: python3 scripts/update-versions.py
+
+      - name: Commit to ${{ env.BRANCH }}
+        if: steps.update.outputs.changed == 'true'
+        env:
+          MESSAGE: ${{ steps.update.outputs.message }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git commit -am "$MESSAGE"
+          git push --force origin "$BRANCH"
+
+  build:
+    needs: check
+    if: needs.check.outputs.changed == 'true'
+    uses: ./.github/workflows/build.yml
+    with:
+      ref: auto/update-versions # env.BRANCH isn't available here
+      push: true
+
+  release:
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.BRANCH }}
+          fetch-depth: 0
+
+      - name: Fast-forward main
+        run: |
+          git push origin "HEAD:refs/heads/${{ github.event.repository.default_branch }}"
+          git push origin --delete "$BRANCH"
+
+      - name: Close failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for n in $(gh issue list --label auto-update --state open --json number --jq '.[].number'); do
+            gh issue close "$n" --comment "Fixed: ${{ needs.check.outputs.message }}"
+          done
+
+  report-failure:
+    needs: [check, build, release]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          MESSAGE: ${{ needs.check.outputs.message }}
+        run: |
+          gh label create auto-update --color FBCA04 --force >/dev/null
+          body="Automatic update failed: ${MESSAGE:-version check}"$'\n\n'"Run: $RUN_URL"
+          n="$(gh issue list --label auto-update --state open --json number --jq '.[0].number')"
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --body "$body"
+          else
+            gh issue create --label auto-update --title "Automatic Android SDK update failed" --body "$body"
+          fi

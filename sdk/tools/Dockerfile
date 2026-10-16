@@ -1,7 +1,5 @@
 FROM ubuntu:24.04
 
-LABEL org.opencontainers.image.source=https://github.com/cirruslabs/docker-images-android
-
 USER root
 
 ENV ANDROID_HOME=/opt/android-sdk-linux \
@@ -12,8 +10,9 @@ ENV ANDROID_HOME=/opt/android-sdk-linux \
 ENV ANDROID_SDK_ROOT=$ANDROID_HOME \
     PATH=${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/emulator
 
-# comes from https://developer.android.com/studio/#command-line-tools-only
-ENV ANDROID_SDK_TOOLS_VERSION 13114758
+# Version comes from versions.env
+ARG ANDROID_SDK_TOOLS_VERSION
+ENV ANDROID_SDK_TOOLS_VERSION=${ANDROID_SDK_TOOLS_VERSION}
 
 RUN set -o xtrace \
     && cd /opt \
@@ -38,7 +37,7 @@ RUN set -o xtrace \
     && rm android-sdk-tools.zip \
     && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
     && yes | sdkmanager --licenses \
-    && wget -O /usr/bin/android-wait-for-emulator https://raw.githubusercontent.com/travis-ci/travis-cookbooks/master/community-cookbooks/android-sdk/files/default/android-wait-for-emulator \
+    && wget -O /usr/bin/android-wait-for-emulator https://raw.githubusercontent.com/travis-ci/travis-cookbooks/main/community-cookbooks/android-sdk/files/default/android-wait-for-emulator \
     && chmod +x /usr/bin/android-wait-for-emulator \
     && touch /root/.android/repositories.cfg \
     && sdkmanager platform-tools \
