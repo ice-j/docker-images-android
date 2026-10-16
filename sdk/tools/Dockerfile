@@ -14,6 +14,9 @@ ENV ANDROID_SDK_ROOT=$ANDROID_HOME \
 ARG ANDROID_SDK_TOOLS_VERSION
 ENV ANDROID_SDK_TOOLS_VERSION=${ANDROID_SDK_TOOLS_VERSION}
 
+# Vendored from travis-ci/travis-cookbooks (public domain)
+COPY --chmod=755 android-wait-for-emulator /usr/bin/android-wait-for-emulator
+
 RUN set -o xtrace \
     && cd /opt \
     && apt-get update \
@@ -37,14 +40,12 @@ RUN set -o xtrace \
     && rm android-sdk-tools.zip \
     && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
     && yes | sdkmanager --licenses \
-    && wget -O /usr/bin/android-wait-for-emulator https://raw.githubusercontent.com/travis-ci/travis-cookbooks/main/community-cookbooks/android-sdk/files/default/android-wait-for-emulator \
-    && chmod +x /usr/bin/android-wait-for-emulator \
     && touch /root/.android/repositories.cfg \
     && sdkmanager platform-tools \
     && mkdir -p /root/.android \
     && touch /root/.android/repositories.cfg \
-    && git config --global user.email "support@cirruslabs.org" \
-    && git config --global user.name "Cirrus CI"
+    && git config --global user.email "me@ice.codes" \
+    && git config --global user.name "Ice Jovanoski"
 
 # emulator is not available on linux/arm64 (https://issuetracker.google.com/issues/227219818)
 RUN if [ $(uname -m) = "x86_64" ]; then sdkmanager emulator ; fi
